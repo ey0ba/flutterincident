@@ -21,8 +21,11 @@ class AuthProvider with ChangeNotifier {
   Future<void> login(String username, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/token/'), // Replace with your Django API endpoint
+        Uri.parse('http://127.0.0.1:8000/api/token/'), // Replace with your Django API endpoint
         body: {'username': username, 'password': password},
+        headers: {
+          'Authorization': 'Bearer $accessToken', // Include the JWT token
+        },
       );
 
       if (response.statusCode == 200) {
@@ -50,19 +53,20 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+
   Future<void> logout() async {
-    _isLoggedIn = false;
-    _accessToken = null;
-    _username = null;
-    _institutionName = null;
+  _isLoggedIn = false;
+  _accessToken = null;
+  _username = null;
 
-    // Clear the token and other stored data
-    await _storage.delete(key: 'access_token');
-    await _storage.delete(key: 'username');
-    await _storage.delete(key: 'institution_name');
+  // Clear stored data
+  await _storage.delete(key: 'access_token');
+  await _storage.delete(key: 'username');
 
-    notifyListeners(); // Notify UI of state change
-  }
+  notifyListeners(); // Notify UI to reflect changes
+}
+
+
 
   Future<void> loadUser() async {
     // Check if token exists on app startup

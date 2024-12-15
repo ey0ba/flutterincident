@@ -7,7 +7,7 @@ import 'screens/home_page.dart';
 void main() {
   runApp(
     ChangeNotifierProvider(
-      create: (_) => AuthProvider()..loadUser(), // Load token on app startup
+      create: (_) => AuthProvider()..loadUser(),
       child: MyApp(),
     ),
   );
@@ -19,10 +19,12 @@ class MyApp extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Flutter App',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: authProvider.isLoggedIn ? HomePage() : LoginPage(),
+      title: 'Incident App',
+      initialRoute: authProvider.isLoggedIn ? '/home' : '/login',
+      routes: {
+        '/login': (context) => LoginPage(),
+        '/home': (context) => HomePage(),
+      },
     );
   }
 }
