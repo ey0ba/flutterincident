@@ -10,7 +10,7 @@ class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Login")),
+      appBar: AppBar(title: const Text("Login")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -18,18 +18,19 @@ class LoginPage extends StatelessWidget {
           children: [
             TextField(
               controller: usernameController,
-              decoration: InputDecoration(labelText: "Username"),
+              decoration: const InputDecoration(labelText: "Username"),
             ),
             TextField(
               controller: passwordController,
-              decoration: InputDecoration(labelText: "Password"),
+              decoration: const InputDecoration(labelText: "Password"),
               obscureText: true,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 try {
-                  Provider.of<AuthProvider>(context, listen: false).login(
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  await authProvider.login(
                     usernameController.text,
                     passwordController.text,
                   );
@@ -39,12 +40,13 @@ class LoginPage extends StatelessWidget {
                   );
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Invalid credentials")),
+                    const SnackBar(content: Text("Invalid credentials")),
                   );
                 }
               },
-              child: Text("Login"),
+              child: const Text("Login"),
             ),
+
           ],
         ),
       ),

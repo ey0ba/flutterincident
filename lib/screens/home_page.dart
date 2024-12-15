@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import 'incident_form.dart'; // Import the new form page
+import 'incident_form.dart';
 
 class HomePage extends StatelessWidget {
   @override
@@ -10,56 +10,36 @@ class HomePage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Welcome, ${authProvider.username ?? 'User'}"), // Handle null username gracefully
+        title: Text("Home - ${authProvider.username ?? "User"}"),
         actions: [
-
           IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: () {
-              final authProvider = Provider.of<AuthProvider>(context, listen: false);
-              authProvider.logout(); // Reset authentication state
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',
-                (route) => false, // Remove all previous routes
-              );
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await authProvider.logout();
+              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
             },
           ),
-
-          
         ],
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+        child: ElevatedButton(
+          onPressed: () async {
+            final accessToken = authProvider.accessToken;
 
-            ElevatedButton(
-              onPressed: () {
-                // Navigate to the incident form and pass the access token
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => IncidentFormPage(
-                      accessToken: authProvider.accessToken!, // Pass the access token here
-                    ),
-                  ),
-                );
-              },
-              child: Text("Report Incident"),
-            ),
-
-           
-            SizedBox(height: 16), // Add spacing between buttons
-            ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Dummy Button clicked!")),
-                );
-              },
-              child: Text("Dummy Button"),
-            ),
-          ],
+            if (accessToken != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const IncidentFormPage(),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Access token not found. Please log in again.')),
+              );
+            }
+          },
+          child: const Text("Report Incident"),
         ),
       ),
     );

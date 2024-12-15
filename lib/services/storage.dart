@@ -13,7 +13,7 @@ class SecureStorageService {
     return await _storage.read(key: key);
   }
 
-  // Delete data
+  // Delete specific data
   Future<void> deleteData(String key) async {
     await _storage.delete(key: key);
   }

@@ -1,19 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class IncidentFormPage extends StatefulWidget {
-  final String accessToken;
-
-  const IncidentFormPage({Key? key, required this.accessToken}) : super(key: key);
+  const IncidentFormPage({Key? key}) : super(key: key);
 
   @override
   _IncidentFormPageState createState() => _IncidentFormPageState();
 }
 
 class _IncidentFormPageState extends State<IncidentFormPage> {
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+
   Map<String, List<dynamic>> dropdownData = {};
-  String? selectedSex, selectedDepartment, selectedCause, selectedFactor, selectedType, selectedOutcome, selectedAction, selectedRole, selectedReporterDepartment;
+  String? selectedSex,
+      selectedDepartment,
+      selectedCause,
+      selectedFactor,
+      selectedType,
+      selectedOutcome,
+      selectedAction,
+      selectedRole,
+      selectedReporterDepartment;
   bool isLoading = true;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController ageController = TextEditingController();
@@ -30,13 +39,27 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
     fetchDropdownData();
   }
 
+  Future<String?> _getAccessToken() async {
+    return await secureStorage.read(key: 'access_token');
+  }
+
   Future<void> fetchDropdownData() async {
+    final accessToken = await _getAccessToken();
+
+    if (accessToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Access token not found. Please log in again.')),
+      );
+      Navigator.pop(context);
+      return;
+    }
+
     final url = 'http://127.0.0.1:8000/api/dropdown-data/';
     try {
       final response = await http.get(
         Uri.parse(url),
         headers: {
-          'Authorization': 'Bearer ${widget.accessToken}',
+          'Authorization': 'Bearer $accessToken',
         },
       );
 
@@ -50,7 +73,7 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load dropdown data')),
+          SnackBar(content: Text('Failed to load dropdown data: ${response.statusCode}')),
         );
       }
     } catch (e) {
@@ -65,9 +88,19 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
       return;
     }
 
+    final accessToken = await _getAccessToken();
+
+    if (accessToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Access token not found. Please log in again.')),
+      );
+      return;
+    }
+
     final url = 'http://127.0.0.1:8000/api/submit-incident/';
     final payload = {
       "age": int.tryParse(ageController.text),
+      "sex": selectedSex,
       "incident_time": selectedDateTime.toIso8601String(),
       "incident_locations": selectedDepartment,
       "suspected_cause": selectedCause,
@@ -89,7 +122,7 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
       final response = await http.post(
         Uri.parse(url),
         headers: {
-          'Authorization': 'Bearer ${widget.accessToken}',
+          'Authorization': 'Bearer $accessToken',
           'Content-Type': 'application/json',
         },
         body: json.encode(payload),
@@ -97,12 +130,12 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Incident submitted successfully!')),
+          const SnackBar(content: Text('Incident submitted successfully!')),
         );
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit incident')),
+          SnackBar(content: Text('Failed to submit incident: ${response.statusCode}')),
         );
       }
     } catch (e) {
@@ -116,10 +149,10 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Report Incident"),
+        title: const Text("Report Incident"),
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Form(
@@ -127,6 +160,9 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
                 child: Column(
                   children: [
                     buildTextInput('Age', ageController, isNumeric: true, required: true),
+                    buildDropdown('Sex', dropdownData['sex_choices'], (value) {
+                      setState(() => selectedSex = value);
+                    }, required: true),
                     buildDateTimePicker(),
                     buildDropdown('Department', dropdownData['departments'], (value) {
                       setState(() => selectedDepartment = value);
@@ -152,7 +188,7 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
                     buildDropdown('Resulting Action', dropdownData['resulting_actions'], (value) {
                       setState(() => selectedAction = value);
                     }, required: true),
-                    buildTextInput('Reporter Name', reporterNameController),
+                    buildTextInput('Reporter Name', reporterNameController, required: true),
                     buildDropdown('Reporter Role', dropdownData['reporter_roles'], (value) {
                       setState(() => selectedRole = value);
                     }, required: true),
@@ -160,10 +196,10 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
                       setState(() => selectedReporterDepartment = value);
                     }, required: true),
                     buildTextInput('Other Opinions', otherOpinionsController),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: submitIncident,
-                      child: Text('Submit'),
+                      child: const Text('Submit'),
                     ),
                   ],
                 ),
@@ -172,7 +208,8 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
     );
   }
 
-  Widget buildTextInput(String label, TextEditingController controller, {bool isNumeric = false, bool required = false}) {
+  Widget buildTextInput(String label, TextEditingController controller,
+      {bool isNumeric = false, bool required = false}) {
     return TextFormField(
       controller: controller,
       keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
@@ -188,7 +225,8 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
     );
   }
 
-  Widget buildDropdown(String label, List<dynamic>? items, void Function(String?)? onChanged, {bool required = false}) {
+  Widget buildDropdown(String label, List<dynamic>? items, void Function(String?)? onChanged,
+      {bool required = false}) {
     return DropdownButtonFormField<String>(
       items: items?.map((item) {
         return DropdownMenuItem<String>(
@@ -240,7 +278,7 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
               }
             }
           },
-          child: Text('Select Time'),
+          child: const Text('Select Time'),
         ),
       ],
     );
