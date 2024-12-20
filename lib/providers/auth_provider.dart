@@ -25,7 +25,7 @@ class AuthProvider with ChangeNotifier {
   Future<void> login(String username, String password) async {
     int retries = 3;
     const Duration delayBetweenRetries = Duration(seconds: 2); // Exponential backoff base
-    const Duration timeoutDuration = Duration(seconds: 10); // Timeout for HTTP requests
+    const Duration timeoutDuration = Duration(seconds: 59); // Timeout for HTTP requests
 
     if (!await _hasNetworkConnection()) {
       throw Exception("No network connection available.");

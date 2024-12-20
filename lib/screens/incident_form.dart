@@ -45,7 +45,6 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
 
   Future<void> fetchDropdownData() async {
     final accessToken = await _getAccessToken();
-    //print("Access token for dropdown data: $accessToken"); // Debug log
 
     if (accessToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -56,8 +55,6 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
     }
 
     final url = 'https://incident.com.et/api/dropdown-data/';
-
-    //print("Fetching dropdown data from: $url"); // Debug log
     try {
       final response = await http.get(
         Uri.parse(url),
@@ -65,9 +62,6 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
           'Authorization': 'Bearer $accessToken',
         },
       );
-
-      //print("Dropdown response status: ${response.statusCode}"); // Debug log
-      //print("Dropdown response body: ${response.body}"); // Debug log
 
       if (response.statusCode == 200) {
         final parsedData = json.decode(response.body) as Map<String, dynamic>;
@@ -77,16 +71,12 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
           });
           isLoading = false;
         });
-
-        //print("Dropdown data fetched successfully."); // Debug log
       } else {
-        //print("Failed to load dropdown data: ${response.statusCode}"); // Debug log
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to load dropdown data: ${response.statusCode}')),
         );
       }
     } catch (e) {
-       //print("Error fetching dropdown data: $e"); // Debug log
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -159,7 +149,20 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Report Incident"),
+        title: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Image.asset(
+                'assets/images/logo.png', // Path to your logo
+                width: 40,
+                height: 40,
+              ),
+            ),
+            const Text("Report Incident"),
+          ],
+        ),
+        backgroundColor: Colors.blue,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -198,7 +201,7 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
                     buildDropdown('Resulting Action', dropdownData['resulting_actions'], (value) {
                       setState(() => selectedAction = value);
                     }, required: true),
-                    buildTextInput('Reporter Name', reporterNameController, required: true),
+                    buildTextInput('Reporter Name', reporterNameController),
                     buildDropdown('Reporter Role', dropdownData['reporter_roles'], (value) {
                       setState(() => selectedRole = value);
                     }, required: true),

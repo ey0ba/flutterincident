@@ -12,7 +12,20 @@ class HomePage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Home - ${authProvider.username ?? "User"}"),
+        title: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Image.asset(
+                'assets/images/logo.png', // Path to your logo
+                width: 40,
+                height: 40,
+              ),
+            ),
+            Text("Home - ${authProvider.username ?? "User"}"),
+          ],
+        ),
+        backgroundColor: Colors.blue,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
