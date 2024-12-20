@@ -16,7 +16,7 @@ String? extractInstitutionId(String token) {
 
     return payloadMap['institution_id']?.toString(); // Extract institution_id
   } catch (e) {
-    print('Error extracting institution_id: $e');
+   // print('Error extracting institution_id: $e');
     return null; // Return null if there's an error
   }
 }

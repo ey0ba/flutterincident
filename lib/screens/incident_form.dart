@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class IncidentFormPage extends StatefulWidget {
-  const IncidentFormPage({Key? key}) : super(key: key);
+  const IncidentFormPage({super.key});
 
   @override
   _IncidentFormPageState createState() => _IncidentFormPageState();
@@ -45,6 +45,7 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
 
   Future<void> fetchDropdownData() async {
     final accessToken = await _getAccessToken();
+    //print("Access token for dropdown data: $accessToken"); // Debug log
 
     if (accessToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -54,7 +55,9 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
       return;
     }
 
-    final url = 'http://127.0.0.1:8000/api/dropdown-data/';
+    final url = 'https://incident.com.et/api/dropdown-data/';
+
+    //print("Fetching dropdown data from: $url"); // Debug log
     try {
       final response = await http.get(
         Uri.parse(url),
@@ -62,6 +65,9 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
           'Authorization': 'Bearer $accessToken',
         },
       );
+
+      //print("Dropdown response status: ${response.statusCode}"); // Debug log
+      //print("Dropdown response body: ${response.body}"); // Debug log
 
       if (response.statusCode == 200) {
         final parsedData = json.decode(response.body) as Map<String, dynamic>;
@@ -71,12 +77,16 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
           });
           isLoading = false;
         });
+
+        //print("Dropdown data fetched successfully."); // Debug log
       } else {
+        //print("Failed to load dropdown data: ${response.statusCode}"); // Debug log
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to load dropdown data: ${response.statusCode}')),
         );
       }
     } catch (e) {
+       //print("Error fetching dropdown data: $e"); // Debug log
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -97,7 +107,7 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
       return;
     }
 
-    final url = 'http://127.0.0.1:8000/api/submit-incident/';
+    final url = 'https://incident.com.et/api/submit-incident/';
     final payload = {
       "age": int.tryParse(ageController.text),
       "sex": selectedSex,

@@ -4,6 +4,8 @@ import '../providers/auth_provider.dart';
 import 'incident_form.dart';
 
 class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
