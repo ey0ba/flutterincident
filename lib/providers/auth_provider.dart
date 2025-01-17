@@ -1,171 +1,62 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import '../services/storage.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import 'home_page.dart';
 
-class AuthProvider with ChangeNotifier {
-  final SecureStorageService _storage = SecureStorageService();
+class LoginPage extends StatelessWidget {
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
-  bool _isLoggedIn = false;
-  String? _accessToken;
-  String? _username;
+  LoginPage({super.key});
 
-  bool get isLoggedIn => _isLoggedIn;
-  String? get accessToken => _accessToken;
-  String? get username => _username;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Login"),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextField(
+              controller: usernameController,
+              decoration: const InputDecoration(labelText: "Username"),
+            ),
+            TextField(
+              controller: passwordController,
+              decoration: const InputDecoration(labelText: "Password"),
+              obscureText: true,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () async {
+                final username = usernameController.text.trim();
+                final password = passwordController.text.trim();
 
-  Future<bool> _hasNetworkConnection() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-    return connectivityResult != ConnectivityResult.none;
-  }
+                if (username.isEmpty || password.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please enter both username and password.")),
+                  );
+                  return;
+                }
 
-  Future<void> login(String username, String password) async {
-    int retries = 3;
-    const Duration delayBetweenRetries = Duration(seconds: 2); // Exponential backoff base
-    const Duration timeoutDuration = Duration(seconds: 59); // Timeout for HTTP requests
+                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                final success = await authProvider.login(context, username, password);
 
-    if (!await _hasNetworkConnection()) {
-      throw Exception("No network connection available.");
-    }
-
-    while (retries > 0) {
-      try {
-        print("Attempting login...");
-
-        final response = await http
-            .post(
-              Uri.parse('https://incident.com.et/api/token/'),
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                if (success) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HomePage()),
+                  );
+                }
               },
-              body: {'username': username, 'password': password},
-            )
-            .timeout(timeoutDuration); // Set timeout for the HTTP request
-
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          _accessToken = data['access'];
-          await _storage.saveData('access_token', _accessToken!);
-          await _storage.saveData('username', username);
-
-          _isLoggedIn = true;
-          _username = username;
-          notifyListeners();
-          return; // Success
-        } else {
-          throw Exception('Invalid credentials');
-        }
-      } catch (e) {
-        retries--;
-        if (retries == 0) {
-          throw Exception('Failed to login after multiple attempts: $e');
-        }
-        await Future.delayed(delayBetweenRetries * (3 - retries)); // Exponential backoff
-      }
-    }
-  }
-
-  Future<void> submitForm(Map<String, dynamic> formData) async {
-    const Duration timeoutDuration = Duration(seconds: 10);
-
-    if (!await _hasNetworkConnection()) {
-      print("No network connection. Caching form data locally.");
-      await _cacheFormLocally(formData);
-      return;
-    }
-
-    try {
-      final response = await http
-          .post(
-            Uri.parse('https://incident.com.et/api/forms/submit/'),
-            headers: {
-              'Authorization': 'Bearer $_accessToken',
-              'Content-Type': 'application/json',
-            },
-            body: json.encode(formData),
-          )
-          .timeout(timeoutDuration);
-
-      if (response.statusCode == 201) {
-        print("Form submitted successfully.");
-      } else {
-        print("Server error. Caching form data locally.");
-        await _cacheFormLocally(formData);
-      }
-    } catch (e) {
-      print("Error submitting form: $e. Caching form data locally.");
-      await _cacheFormLocally(formData);
-    }
-  }
-
-  Future<void> _cacheFormLocally(Map<String, dynamic> formData) async {
-    final box = await Hive.openBox('form_cache');
-    await box.add(formData);
-    print("Form data cached locally.");
-  }
-
-  Future<void> syncCachedForms() async {
-    if (!await _hasNetworkConnection()) {
-      print("No network connection. Cannot sync cached forms.");
-      return;
-    }
-
-    final box = await Hive.openBox('form_cache');
-    final cachedForms = box.values.toList();
-
-    for (var formData in cachedForms) {
-      try {
-        final response = await http
-            .post(
-              Uri.parse('https://incident.com.et/api/forms/submit/'),
-              headers: {
-                'Authorization': 'Bearer $_accessToken',
-                'Content-Type': 'application/json',
-              },
-              body: json.encode(formData),
-            )
-            .timeout(Duration(seconds: 10));
-
-        if (response.statusCode == 201) {
-          print("Cached form submitted successfully.");
-          await box.deleteAt(cachedForms.indexOf(formData));
-        } else {
-          print("Failed to submit cached form: ${response.statusCode}");
-        }
-      } catch (e) {
-        print("Error syncing cached form: $e");
-      }
-    }
-  }
-
-  Future<void> logout() async {
-    print("Logging out...");
-    _isLoggedIn = false;
-    _accessToken = null;
-    _username = null;
-
-    await _storage.clearData();
-    notifyListeners();
-    print("Logout successful!");
-  }
-
-  Future<void> loadUser() async {
-    print("Loading user session...");
-    _accessToken = await _storage.readData('access_token');
-    _username = await _storage.readData('username');
-
-    _isLoggedIn = _accessToken != null;
-    notifyListeners();
-
-    if (_isLoggedIn) {
-      print("User session restored.");
-      print("Access token: $_accessToken");
-      print("Username: $_username");
-    } else {
-      print("No user session found.");
-    }
+              child: const Text("Login"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

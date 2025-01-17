@@ -34,37 +34,51 @@ class LoginPage extends StatelessWidget {
             TextField(
               controller: usernameController,
               decoration: const InputDecoration(labelText: "Username"),
+              textInputAction: TextInputAction.next,
             ),
             TextField(
               controller: passwordController,
               decoration: const InputDecoration(labelText: "Password"),
               obscureText: true,
+              textInputAction: TextInputAction.done,
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                final username = usernameController.text;
-                final password = passwordController.text;
+            Consumer<AuthProvider>(
+              builder: (context, authProvider, child) {
+                return ElevatedButton(
+                  onPressed: authProvider.isLoggedIn
+                      ? null
+                      : () async {
+                          if (usernameController.text.isEmpty ||
+                              passwordController.text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please fill in all fields.')),
+                            );
+                            return;
+                          }
 
-                try {
-                  final authProvider =
-                      Provider.of<AuthProvider>(context, listen: false);
+                          final isLoggedIn = await authProvider.login(
+                            context,
+                            usernameController.text,
+                            passwordController.text,
+                          );
 
-                  await authProvider.login(username, password);
-
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HomePage()),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Error: ${e.toString()}"),
-                    ),
-                  );
-                }
+                          if (isLoggedIn) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => HomePage()),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Login failed. Please try again.')),
+                            );
+                          }
+                        },
+                  child: authProvider.isLoggedIn
+                      ? const CircularProgressIndicator()
+                      : const Text("Login"),
+                );
               },
-              child: const Text("Login"),
             ),
           ],
         ),

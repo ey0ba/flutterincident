@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_page.dart';
 import 'screens/home_page.dart';
@@ -9,31 +8,35 @@ Future<void> main() async {
   // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive for local storage
-  await Hive.initFlutter();
+  // Create the AuthProvider instance
+  final authProvider = AuthProvider();
 
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => AuthProvider()..loadUser(),
-      child: MyApp(),
-    ),
-  );
+  // Load user session
+  await authProvider.loadUser();
+
+  runApp(MyApp(authProvider: authProvider));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AuthProvider authProvider;
+
+  const MyApp({super.key, required this.authProvider});
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-
-    return MaterialApp(
-      title: 'Incident App',
-      initialRoute: authProvider.isLoggedIn ? '/home' : '/login',
-      routes: {
-        '/login': (context) => LoginPage(),
-        '/home': (context) => HomePage(),
-      },
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: authProvider),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Authentication App',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+        ),
+        home: authProvider.isLoggedIn ? const HomePage() : LoginPage(),
+      ),
     );
   }
 }
+

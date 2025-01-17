@@ -24,6 +24,8 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
       selectedRole,
       selectedReporterDepartment;
   bool isLoading = true;
+  bool isSubmitting = false;
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController ageController = TextEditingController();
   final TextEditingController causeOtherController = TextEditingController();
@@ -56,12 +58,12 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
 
     final url = 'https://incident.com.et/api/dropdown-data/';
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-        },
-      );
+      final response = await http
+          .get(
+            Uri.parse(url),
+            headers: {'Authorization': 'Bearer $accessToken'},
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final parsedData = json.decode(response.body) as Map<String, dynamic>;
@@ -78,7 +80,7 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Error fetching data: $e')),
       );
     }
   }
@@ -88,12 +90,15 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
       return;
     }
 
+    setState(() => isSubmitting = true);
+
     final accessToken = await _getAccessToken();
 
     if (accessToken == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Access token not found. Please log in again.')),
       );
+      setState(() => isSubmitting = false);
       return;
     }
 
@@ -118,31 +123,45 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
       "other_opinions": otherOpinionsController.text,
     };
 
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode(payload),
-      );
+    int retries = 3;
+    while (retries > 0) {
+      try {
+        final response = await http
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Authorization': 'Bearer $accessToken',
+                'Content-Type': 'application/json',
+              },
+              body: json.encode(payload),
+            )
+            .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Incident submitted successfully!')),
-        );
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to submit incident: ${response.statusCode}')),
-        );
+        if (response.statusCode == 201) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Incident submitted successfully!')),
+          );
+          Navigator.pop(context);
+          break;
+        } else {
+          retries--;
+          if (retries == 0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Submission failed: ${response.body}')),
+            );
+          }
+        }
+      } catch (e) {
+        retries--;
+        if (retries == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
     }
+
+    setState(() => isSubmitting = false);
   }
 
   @override
@@ -211,8 +230,10 @@ class _IncidentFormPageState extends State<IncidentFormPage> {
                     buildTextInput('Other Opinions', otherOpinionsController),
                     const SizedBox(height: 20),
                     ElevatedButton(
-                      onPressed: submitIncident,
-                      child: const Text('Submit'),
+                      onPressed: isSubmitting ? null : submitIncident,
+                      child: isSubmitting
+                          ? const CircularProgressIndicator()
+                          : const Text('Submit'),
                     ),
                   ],
                 ),
